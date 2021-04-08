@@ -1,0 +1,34 @@
+file_unit = { (!EOI ~ unit)* ~ EOI }
+
+repl_unit = { !EOI ~ unit ~ EOI }
+
+unit = { bind | expr }
+
+bind = { symbol ~ "=" ~ expr }
+
+expr = { "(" ~ expr ~ ")" | lambda | fun_call | symbol  }
+
+sub_expr = ${ lambda | symbol }
+
+lambda = { symbol ~ "->" ~ expr }
+
+fun_call = { symbol ~ ("(" ~ expr ~ ")")* }
+
+symbol = ${ (!(WHITESPACE | "\"" | "\'" | "(" | ")" | "[" | "]") ~ ANY)+ }
+
+line_comment = _{
+	";" ~ (!NEWLINE ~ ANY)* ~ NEWLINE?
+}
+
+block_comment = _{
+	"{" ~ (block_comment | (!"}" ~ ANY))* ~ "}"
+}
+
+COMMENT = _{ line_comment | block_comment }
+
+WHITESPACE = _
+	{ " "
+	| "\t"
+	| WHITE_SPACE
+	| NEWLINE
+	}
