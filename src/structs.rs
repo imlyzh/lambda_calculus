@@ -1,6 +1,8 @@
-use std::{collections::HashMap};
+use std::{collections::{HashMap, LinkedList}, rc::Rc};
 
-use sexpr_ir::values::{Handle, Symbol};
+use sexpr_ir::values::Symbol;
+
+pub type Handle<T> = Rc<T>;
 
 #[derive(Debug)]
 pub enum Unit {
@@ -18,17 +20,41 @@ pub enum Expr {
 	Symbol(Handle<Symbol>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Apply {
 	pub callee: Expr,
 	pub calls: Vec<Expr>,
 }
 
+pub type Env = HashMap<Handle<Symbol>, Expr>;
+
+pub type GlobalEnv = Env;
+
+#[derive(Debug, Clone)]
+pub struct LocalEnv (pub LinkedList<Env>);
+
+impl LocalEnv {
+	pub fn new() -> Self {
+		LocalEnv(LinkedList::new())
+	}
+
+	pub fn get(&self, k: &Handle<Symbol>) -> Option<&Expr> {
+		for table in &self.0 {
+			if let Some(v) = table.get(k) {
+				return Some(v);
+			}
+		}
+		None
+	}
+}
+
+
+
 #[derive(Debug, Clone)]
 pub struct Lambda {
 	pub name: Handle<Symbol>,
 	pub body: Expr,
-	pub catch_variable_table: HashMap<Handle<Symbol>, Expr>,
+	pub catch_variable_table: LocalEnv,
 }
 
 impl Lambda {
@@ -36,7 +62,7 @@ impl Lambda {
 		Lambda {
 		    name: name.clone(),
 		    body: body.clone(),
-		    catch_variable_table: HashMap::new(),
+		    catch_variable_table: LocalEnv::new(),
 		}
 	}
 }

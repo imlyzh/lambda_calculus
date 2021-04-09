@@ -1,5 +1,6 @@
 mod structs;
 mod parser;
+mod eval;
 
 use std::io::{Write, stdin, stdout};
 

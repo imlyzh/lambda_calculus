@@ -4,7 +4,7 @@ use pest::{Parser, error::Error};
 use pest::iterators::Pair;
 use pest_derive::*;
 
-use sexpr_ir::values::{Handle, Symbol};
+use sexpr_ir::values::{Symbol};
 
 use crate::structs::*;
 
