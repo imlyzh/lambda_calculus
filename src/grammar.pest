@@ -1,3 +1,5 @@
+
+
 file_unit = { (!EOI ~ unit)* ~ EOI }
 
 repl_unit = { !EOI ~ unit ~ EOI }
@@ -6,15 +8,19 @@ unit = { bind | expr }
 
 bind = { symbol ~ "=" ~ expr }
 
-expr = { "(" ~ expr ~ ")" | lambda | fun_call | symbol  }
+expr = { "(" ~ expr ~ ")" | lambda | apply | symbol  }
 
-sub_expr = ${ lambda | symbol }
+sub_expr = { "(" ~ expr ~ ")" | lambda | symbol }
 
 lambda = { symbol ~ "->" ~ expr }
 
-fun_call = { symbol ~ ("(" ~ expr ~ ")")* }
+apply = { symbol ~ ("(" ~ expr ~ ")")+ }
 
 symbol = ${ (!(WHITESPACE | "\"" | "\'" | "(" | ")" | "[" | "]") ~ ANY)+ }
+
+
+
+COMMENT = _{ line_comment | block_comment }
 
 line_comment = _{
 	";" ~ (!NEWLINE ~ ANY)* ~ NEWLINE?
@@ -23,8 +29,6 @@ line_comment = _{
 block_comment = _{
 	"{" ~ (block_comment | (!"}" ~ ANY))* ~ "}"
 }
-
-COMMENT = _{ line_comment | block_comment }
 
 WHITESPACE = _
 	{ " "
