@@ -14,41 +14,45 @@ fn find_name<'a>(
 	}
 }
 
-fn apply_once(
+fn apply(
 	global_env: &GlobalEnv,
 	local_env: &LocalEnv,
 	callee: &Expr,
-	parame: &Expr) -> Option<Expr> {
-		todo!()
+	prarm: &Expr) -> Expr {
+	match callee {
+		Expr::Lambda(l) => {
+			let mut env = l.catch_variable_table.clone();
+			env.insert(
+				l.name.clone(), 
+				lazy_eval_expr(global_env, local_env, prarm));
+			lazy_eval_expr(global_env, &env, &l.body)
+		}
+	    Expr::Apply(a) => {
+			let callee = apply(global_env, local_env, &a.callee, &a.prarm);
+			lazy_eval_expr(global_env, local_env, &callee)
+		},
+	    Expr::Symbol(k) => {
+			find_name(global_env, local_env, &k)
+				.map_or(Expr::Apply(Handle::new(Apply{
+					callee: callee.clone(),
+					prarm: prarm.clone()
+				})),
+					|callee| apply(global_env, local_env, callee, prarm))
+		}
 	}
-
-fn apply_multi(
-	global_env: &GlobalEnv,
-	local_env: &LocalEnv,
-	a: &Handle<Apply>) -> Expr {
-	let mut callee = a.callee.clone();
-	let calls = a.calls.clone();
-	for i in calls {
-		// callee = apply_once(global_env, local_env, &callee, &i);
-		todo!()
-	}
-	todo!()
 }
 
-fn lazy_eval_expr(
+pub fn lazy_eval_expr(
 	global_env: &GlobalEnv,
 	local_env: &LocalEnv,
 	code: &Expr) -> Expr {
 	match code {
-	    Expr::Apply(a) => apply_multi(global_env, local_env, a),
+	    Expr::Apply(a) => apply(global_env, local_env, &a.callee,&a.prarm),
 	    Expr::Lambda(v) => {
-			let mut local_env = local_env.0.clone();
-			let mut cvt = v.catch_variable_table.0.clone();
-			cvt.append(&mut local_env);
 			let v = Lambda {
 			    name: v.name.clone(),
 			    body: v.body.clone(),
-			    catch_variable_table: LocalEnv(cvt),
+			    catch_variable_table: local_env.clone(),
 			};
 			Expr::Lambda(Handle::new(v))
 		},

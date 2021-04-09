@@ -2,12 +2,15 @@ mod structs;
 mod parser;
 mod eval;
 
-use std::io::{Write, stdin, stdout};
+use std::{collections::HashMap, io::{Write, stdin, stdout}};
 
+use eval::{lazy_eval, lazy_eval_expr};
 use parser::{repl_parse};
 
 
 fn main() -> ! {
+	let mut global_env = HashMap::new();
+	let local_env = HashMap::new();
     loop {
         // read
         stdout().write_all("λ ".as_bytes()).unwrap();
@@ -20,6 +23,9 @@ fn main() -> ! {
         }
         // parse
         let res = repl_parse(&input).unwrap();
-        println!("res: {:?}", res);
+		// eval
+		let res = lazy_eval(&mut global_env, &local_env, &res);
+		// let res = lazy_eval_expr(&mut global_env, &local_env, &res);
+        println!("> {}", res);
     }
 }

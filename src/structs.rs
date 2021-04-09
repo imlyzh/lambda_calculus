@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, LinkedList}, rc::Rc};
+use std::{collections::HashMap, fmt::Display, rc::Rc};
 
 use sexpr_ir::values::Symbol;
 
@@ -20,35 +20,33 @@ pub enum Expr {
 	Symbol(Handle<Symbol>),
 }
 
+impl Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::Apply(v) => v.fmt(f),
+            Expr::Lambda(v) => v.fmt(f),
+            Expr::Symbol(v) => v.fmt(f)
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Apply {
 	pub callee: Expr,
-	pub calls: Vec<Expr>,
+	pub prarm: Expr,
+}
+
+impl Display for Apply {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}({})", self.callee, self.prarm)
+    }
 }
 
 pub type Env = HashMap<Handle<Symbol>, Expr>;
 
 pub type GlobalEnv = Env;
 
-#[derive(Debug, Clone)]
-pub struct LocalEnv (pub LinkedList<Env>);
-
-impl LocalEnv {
-	pub fn new() -> Self {
-		LocalEnv(LinkedList::new())
-	}
-
-	pub fn get(&self, k: &Handle<Symbol>) -> Option<&Expr> {
-		for table in &self.0 {
-			if let Some(v) = table.get(k) {
-				return Some(v);
-			}
-		}
-		None
-	}
-}
-
-
+pub type LocalEnv = Env;
 
 #[derive(Debug, Clone)]
 pub struct Lambda {
@@ -65,4 +63,21 @@ impl Lambda {
 		    catch_variable_table: LocalEnv::new(),
 		}
 	}
+}
+
+impl Display for Lambda {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let l =
+		if self.catch_variable_table.len() == 0 {
+			"".to_string()
+		} else {
+			let l: Vec<String> = self.catch_variable_table
+			.iter()
+			.map(|(k, v)| format!("{}:{}", k, v))
+			.collect();
+			let l = l.join(", ");
+			format!("[{}] ", l)
+		};
+        write!(f, "{}{} -> {}", l, self.name, self.body)
+    }
 }

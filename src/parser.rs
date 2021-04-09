@@ -22,10 +22,8 @@ where
 impl ParseFrom<Rule> for Unit {
     fn parse_from(pair: Pair<Rule>) -> Self {
         match pair.as_rule() {
-			Rule::bind => Unit::Bind(Bind::parse_from(
-				pair.into_inner().next().unwrap())),
-			Rule::expr => Unit::Expr(Expr::parse_from(
-					pair.into_inner().next().unwrap())),
+			Rule::bind => Unit::Bind(Bind::parse_from(pair)),
+			Rule::expr => Unit::Expr(Expr::parse_from(pair)),
 			_ => unreachable!()
 		}
     }
@@ -60,11 +58,19 @@ impl ParseFrom<Rule> for Apply {
 		let mut inner = pair.into_inner();
 		let callee = inner.next().unwrap();
 		let callee = Expr::parse_from(callee);
-		let calls = inner
+		let mut r: Option<Apply> = None;
+		for i in inner
 			.flat_map(|x| x.into_inner())
-			.map(Expr::parse_from)
-			.collect();
-		Apply { callee, calls }
+			.map(Expr::parse_from) {
+				let callee =
+					if r.is_none() {
+						callee.clone()
+					} else {
+						Expr::Apply(Handle::new(r.unwrap()))
+					};
+				r = Some(Apply{ callee, prarm:i });
+		}
+		r.unwrap()
     }
 }
 
@@ -97,7 +103,6 @@ impl ParseFrom<Rule> for Symbol {
 
 pub fn repl_parse(input: &str) -> Result<Unit, Error<Rule>> {
     let mut pair = LambdaCalculus::parse(Rule::repl_unit, input)?;
-	println!("out: {}", &pair);
 	let pair = pair
         .next()
         .unwrap()
