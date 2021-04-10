@@ -4,7 +4,7 @@ mod eval;
 
 use std::{collections::HashMap, io::{Write, stdin, stdout}};
 
-use eval::{lazy_eval, lazy_eval_expr};
+use eval::{eval};
 use parser::{repl_parse};
 
 
@@ -24,8 +24,8 @@ fn main() -> ! {
         // parse
         let res = repl_parse(&input).unwrap();
 		// eval
-		let res = lazy_eval(&mut global_env, &local_env, &res);
+		let res = eval(&mut global_env, &local_env, &res);
 		// let res = lazy_eval_expr(&mut global_env, &local_env, &res);
-        println!("> {}", res);
+        res.iter().for_each(|x|println!("> {}", x));
     }
 }

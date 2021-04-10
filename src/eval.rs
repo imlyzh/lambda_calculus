@@ -1,7 +1,11 @@
 
 use sexpr_ir::values::Symbol;
 
-use crate::structs::{Apply, Bind, Expr, GlobalEnv, Handle, Lambda, LocalEnv, Unit};
+use crate::structs::{Bind, Expr, GlobalEnv, Handle, Lambda, LocalEnv, Unit};
+
+type EvalError = ();
+
+type EvalResult = Result<Expr, EvalError>;
 
 fn find_name<'a>(
 	global_env: &'a GlobalEnv,
@@ -14,38 +18,54 @@ fn find_name<'a>(
 	}
 }
 
+
+/* fn lazy_find_name(
+	global_env: &GlobalEnv,
+	local_env: &LocalEnv,
+	k: &Handle<Symbol>) -> Expr {
+		find_name(global_env, local_env, &k)
+		.map_or(Expr::Symbol(k.clone()), Expr::clone)
+} */
+
+fn funcall(global_env: &GlobalEnv,
+	local_env: &LocalEnv,
+	callee: &Lambda,
+	prarm: &Expr) -> EvalResult {
+		let mut env = callee.catch_variable_table.clone();
+		let prarm = eval_expr(global_env, local_env, prarm)?;
+		env.insert(
+			callee.name.clone(),
+			prarm);
+		// eval_expr(global_env, local_env, prarm)?
+			eval_expr(global_env, &env, &callee.body)
+}
+
 fn apply(
 	global_env: &GlobalEnv,
 	local_env: &LocalEnv,
 	callee: &Expr,
-	prarm: &Expr) -> Expr {
+	prarm: &Expr) -> EvalResult {
 	match callee {
 		Expr::Lambda(l) => {
-			let mut env = l.catch_variable_table.clone();
-			env.insert(
-				l.name.clone(), 
-				lazy_eval_expr(global_env, local_env, prarm));
-			lazy_eval_expr(global_env, &env, &l.body)
+			funcall(global_env, local_env, l, prarm)
 		}
 	    Expr::Apply(a) => {
-			let callee = apply(global_env, local_env, &a.callee, &a.prarm);
-			lazy_eval_expr(global_env, local_env, &callee)
+			let callee = apply(global_env, local_env, &a.callee, &a.prarm)?;
+			apply(global_env, local_env, &callee, prarm)
 		},
 	    Expr::Symbol(k) => {
 			find_name(global_env, local_env, &k)
-				.map_or(Expr::Apply(Handle::new(Apply{
-					callee: callee.clone(),
-					prarm: prarm.clone()
-				})),
-					|callee| apply(global_env, local_env, callee, prarm))
+				.map_or(
+					Err(()),
+				|callee| apply(global_env, local_env, callee, prarm))
 		}
 	}
 }
 
-pub fn lazy_eval_expr(
+pub fn eval_expr(
 	global_env: &GlobalEnv,
 	local_env: &LocalEnv,
-	code: &Expr) -> Expr {
+	code: &Expr) -> EvalResult {
 	match code {
 	    Expr::Apply(a) => apply(global_env, local_env, &a.callee,&a.prarm),
 	    Expr::Lambda(v) => {
@@ -54,22 +74,28 @@ pub fn lazy_eval_expr(
 			    body: v.body.clone(),
 			    catch_variable_table: local_env.clone(),
 			};
-			Expr::Lambda(Handle::new(v))
+			Ok(Expr::Lambda(Handle::new(v)))
 		},
-	    Expr::Symbol(_) => code.clone()
+	    Expr::Symbol(k) => {
+			let r = find_name(global_env, local_env, &k)
+				.map(Expr::clone)
+				.or(Some(code.clone()))
+				.unwrap();
+			Ok(r)
+		}
 	}
 }
 
-pub fn lazy_eval(
+pub fn eval(
 	global_env: &mut GlobalEnv,
 	local_env: &LocalEnv,
-	code: &Unit) -> Expr {
+	code: &Unit) -> EvalResult {
 	match code {
 		Unit::Bind(Bind(k, v)) => {
-			let v = lazy_eval_expr(global_env, local_env, v);
+			let v = eval_expr(global_env, local_env, v)?;
 			global_env.insert(k.clone(), v.clone());
-			v
+			Ok(v)
 		}
-		Unit::Expr(v) => lazy_eval_expr(global_env, local_env, v)
+		Unit::Expr(v) => eval_expr(global_env, local_env, v)
 	}
 }
